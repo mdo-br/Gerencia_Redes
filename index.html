@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Laboratório de Segurança – Infraestrutura e Firewall</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; background-color: #f9fafb; color: #222; }
+    h1 { color: #0057b7; }
+    h2 { color: #333; }
+    table { border-collapse: collapse; width: 80%; margin-top: 20px; }
+    th, td { border: 1px solid #bbb; padding: 8px 12px; text-align: left; }
+    th { background-color: #e0e0e0; }
+    code { background: #eee; padding: 2px 4px; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <h1>Laboratório de Segurança – Fase 1</h1>
+  <h2>Infraestrutura e Firewall</h2>
+  <p>Este ambiente simula um cenário corporativo com redes segregadas, controle de tráfego e monitoramento centralizado.</p>
+
+  <h3>Topologia de Rede</h3>
+  <table>
+    <tr><th>Função</th><th>Interface</th><th>Rede</th><th>IP</th></tr>
+    <tr><td>Firewall</td><td>enp0s3</td><td>Internet (Bridged/NAT)</td><td>Dinâmico (DHCP)</td></tr>
+    <tr><td>Firewall</td><td>enp0s8</td><td>LAN Interna (VMnet1)</td><td>192.168.56.254</td></tr>
+    <tr><td>Firewall</td><td>enp0s9</td><td>DMZ (VMnet2)</td><td>192.168.57.254</td></tr>
+    <tr><td>Cliente</td><td>enp0s3</td><td>LAN</td><td>192.168.56.10</td></tr>
+    <tr><td>Webserver</td><td>enp0s3</td><td>DMZ</td><td>192.168.57.10</td></tr>
+  </table>
+
+  <h3>Serviços Implementados</h3>
+  <ul>
+    <li><strong>Firewall Ubuntu Server</strong> – Roteamento, NAT e DNAT</li>
+    <li><strong>Webserver Apache</strong> – Página de status do laboratório</li>
+    <li><strong>Cliente Ubuntu Server</strong> – Testes via terminal (curl/w3m)</li>
+  </ul>
+
+  <h3>Próximas Fases</h3>
+  <p>A próxima etapa consiste na configuração do <strong>Nagios Core</strong> no firewall, com monitoramento via NRPE nas VMs Cliente e Webserver.</p>
+
+  <footer style="margin-top: 40px; font-size: 0.9em; color: #555;">
+    <p>© 2025 Laboratório de Segurança – UFC Quixadá</p>
+  </footer>
+</body>
+</html>
