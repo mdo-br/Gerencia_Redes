@@ -79,7 +79,7 @@ sequenceDiagram
     Client->>SNMPD: snmpset .1.3.6.1.4.1.99999.1.1.2.0 i 2
     SNMPD->>Agent: -s .1.3.6.1.4.1.99999.1.1.2.0 integer 2
     Agent->>Agent: Valida valor (0-3)
-    Agent->>Agent: Agenda background<br/>(sleep 1; systemctl restart)
+    Agent->>Agent: Agenda restart em background
     Agent-->>SNMPD: exit 0 (sucesso)
     SNMPD-->>Client: INTEGER: 2
     Note over Agent,System: 1 segundo depois...
