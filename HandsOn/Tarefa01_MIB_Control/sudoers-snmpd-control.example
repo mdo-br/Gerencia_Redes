@@ -1,0 +1,2 @@
+# Permitir usuário Debian-snmp executar systemctl para snmpd
+Debian-snmp ALL=(ALL) NOPASSWD: /bin/systemctl start snmpd, /bin/systemctl stop snmpd, /bin/systemctl restart snmpd

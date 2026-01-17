@@ -1,0 +1,30 @@
+# ====================================================================
+# Configuração SNMP para CUSTOM-CONTROL-MIB (Tarefa 01)
+# ====================================================================
+
+# Views - Definir OIDs acessíveis
+view   systemonly  included   .1.3.6.1.2.1.1
+view   systemonly  included   .1.3.6.1.2.1.25.1
+view   systemonly  included   .1.3.6.1.4.1.99999      # CUSTOM OID
+
+# Comunidades SNMP
+rocommunity public localhost -V systemonly             # Leitura
+rwcommunity private localhost -V systemonly            # Escrita
+
+# Agente pass para CUSTOM-CONTROL-MIB
+pass .1.3.6.1.4.1.99999.1 /usr/local/bin/snmpd_control_agent.sh
+
+# ====================================================================
+# INSTALAÇÃO:
+# 1. Copiar este arquivo para /etc/snmp/snmpd.conf (backup o original)
+# 2. Copiar snmpd_control_agent.sh para /usr/local/bin/
+# 3. chmod +x /usr/local/bin/snmpd_control_agent.sh
+# 4. Criar sudoers: /etc/sudoers.d/snmpd-control com:
+#    Debian-snmp ALL=(ALL) NOPASSWD: /bin/systemctl start snmpd, /bin/systemctl stop snmpd, /bin/systemctl restart snmpd
+# 5. sudo systemctl restart snmpd
+#
+# TESTES:
+# - GET:  snmpget -v2c -c public localhost .1.3.6.1.4.1.99999.1.1.1.0
+# - WALK: snmpwalk -v2c -c public localhost .1.3.6.1.4.1.99999.1
+# - SET:  snmpset -v2c -c private localhost .1.3.6.1.4.1.99999.1.1.2.0 i 2
+# ====================================================================
