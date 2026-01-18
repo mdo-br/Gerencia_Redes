@@ -57,7 +57,7 @@ elif [ "$1" = "-s" ]; then
     echo "$(date): SET OID=$OID VALUE=$VALUE" >> /tmp/snmp_set.log
     
     if [ "$OID" = "${OID_BASE}.2.0" ]; then
-        # Execute control action in background to avoid script termination
+        # Ação executada em background para não interromper o snmpd
         case "$VALUE" in
             1) echo "$(date): Executing STOP" >> /tmp/snmp_set.log; (sleep 1; sudo systemctl stop snmpd) >/dev/null 2>&1 & ;;
             2) echo "$(date): Executing RESTART" >> /tmp/snmp_set.log; (sleep 1; sudo systemctl restart snmpd) >/dev/null 2>&1 & ;;

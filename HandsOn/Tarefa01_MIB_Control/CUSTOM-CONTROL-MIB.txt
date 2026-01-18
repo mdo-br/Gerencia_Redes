@@ -17,7 +17,7 @@ customControlMIB MODULE-IDENTITY
         JOÃO BATISTA ANDRADE DOS SANTOS
         batistajoaoguns@alu.ufc.br
         Marcos Dantas Ortiz
-         Email: mdo@ufc.br"
+        mdo@ufc.br"
     DESCRIPTION
         "MIB customizada para controle do servico snmpd.
          Permite leitura do status e comandos de controle (stop/restart)."
