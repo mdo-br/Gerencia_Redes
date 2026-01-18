@@ -1,0 +1,110 @@
+CUSTOM-CONTROL-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY, OBJECT-TYPE, enterprises, Integer32
+        FROM SNMPv2-SMI
+    TEXTUAL-CONVENTION, DisplayString
+        FROM SNMPv2-TC
+    MODULE-COMPLIANCE, OBJECT-GROUP
+        FROM SNMPv2-CONF;
+
+customControlMIB MODULE-IDENTITY
+    LAST-UPDATED "202512150000Z"
+    ORGANIZATION "MDCC - UFC"
+    CONTACT-INFO
+        "ANTONIA MAYARA DE ALMEIDA DA SILVA
+        mayaraalmeida@alu.ufc.br
+        JOÃO BATISTA ANDRADE DOS SANTOS
+        batistajoaoguns@alu.ufc.br
+        Marcos Dantas Ortiz
+         Email: mdo@ufc.br"
+    DESCRIPTION
+        "MIB customizada para controle do servico snmpd.
+         Permite leitura do status e comandos de controle (stop/restart)."
+    REVISION "202512150000Z"
+    DESCRIPTION "Versao inicial da MIB de controle do SNMPD"
+    ::= { enterprises 99999 1 }
+
+-- Definicao de objetos
+customControlObjects OBJECT IDENTIFIER ::= { customControlMIB 1 }
+
+-- Estado do servico SNMPD (leitura)
+snmpdStatus OBJECT-TYPE
+    SYNTAX      INTEGER {
+                    unknown(0),
+                    running(1),
+                    stopped(2)
+                }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Estado atual do servico snmpd:
+         unknown(0) - Estado desconhecido
+         running(1) - Servico em execucao
+         stopped(2) - Servico parado"
+    ::= { customControlObjects 1 }
+
+-- Controle do servico SNMPD (escrita)
+snmpdControl OBJECT-TYPE
+    SYNTAX      INTEGER {
+                    noop(0),
+                    stop(1),
+                    restart(2),
+                    start(3)
+                }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Comando de controle do servico snmpd:
+         noop(0)    - Nenhuma acao (leitura retorna ultima acao)
+         stop(1)    - Parar o servico snmpd
+         restart(2) - Reiniciar o servico snmpd
+         start(3)   - Iniciar o servico snmpd
+         
+         Nota: Ao fazer SET, o agente executara a acao correspondente."
+    ::= { customControlObjects 2 }
+
+-- Informacoes adicionais
+snmpdUptime OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..255))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Tempo de execucao do servico snmpd desde o ultimo inicio."
+    ::= { customControlObjects 3 }
+
+snmpdVersion OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..255))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Versao do servico snmpd em execucao."
+    ::= { customControlObjects 4 }
+
+-- Conformidade
+customControlConformance OBJECT IDENTIFIER ::= { customControlMIB 2 }
+
+customControlCompliances OBJECT IDENTIFIER ::= { customControlConformance 1 }
+customControlGroups      OBJECT IDENTIFIER ::= { customControlConformance 2 }
+
+customControlCompliance MODULE-COMPLIANCE
+    STATUS      current
+    DESCRIPTION
+        "Requisitos de conformidade para implementacao desta MIB."
+    MODULE
+        MANDATORY-GROUPS { customControlGroup }
+    ::= { customControlCompliances 1 }
+
+customControlGroup OBJECT-GROUP
+    OBJECTS {
+        snmpdStatus,
+        snmpdControl,
+        snmpdUptime,
+        snmpdVersion
+    }
+    STATUS      current
+    DESCRIPTION
+        "Grupo de objetos para controle do snmpd."
+    ::= { customControlGroups 1 }
+
+END
