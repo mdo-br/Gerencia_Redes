@@ -22,7 +22,7 @@ if [ "$1" = "-g" ]; then
         "${OID_BASE}.4.0")
             echo "${OID_BASE}.4.0"
             echo "string"
-            snmpd -v 2>&1 | head -1 | awk '{print $3}'
+            snmpd -v 2>&1 | grep "NET-SNMP version" | awk '{print $3}'
             ;;
     esac
 elif [ "$1" = "-n" ]; then
@@ -45,7 +45,7 @@ elif [ "$1" = "-n" ]; then
         "${OID_BASE}.3.0")
             echo "${OID_BASE}.4.0"
             echo "string"
-            snmpd -v 2>&1 | head -1 | awk '{print $3}'
+            snmpd -v 2>&1 | grep "NET-SNMP version" | awk '{print $3}'
             ;;
     esac
 elif [ "$1" = "-s" ]; then
