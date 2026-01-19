@@ -1,0 +1,213 @@
+CUSTOM-TRAPS-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY, OBJECT-TYPE, NOTIFICATION-TYPE, enterprises, Integer32
+        FROM SNMPv2-SMI
+    TEXTUAL-CONVENTION, DisplayString, TimeStamp
+        FROM SNMPv2-TC
+    MODULE-COMPLIANCE, NOTIFICATION-GROUP
+        FROM SNMPv2-CONF;
+
+customTrapsMIB MODULE-IDENTITY
+    LAST-UPDATED "202512150000Z"
+    ORGANIZATION "MDCC - UFC"
+    CONTACT-INFO
+        "ANTONIA MAYARA DE ALMEIDA DA SILVA
+        mayaraalmeida@alu.ufc.br
+        JOÃO BATISTA ANDRADE DOS SANTOS
+        batistajoaoguns@alu.ufc.br
+        Marcos Dantas Ortiz
+        mdo@ufc.br"
+    DESCRIPTION
+        "MIB customizada para traps de notificacao.
+         Define traps para temperatura alta e disco cheio."
+    REVISION "202512150000Z"
+    DESCRIPTION "Versao inicial da MIB de traps"
+    ::= { enterprises 99999 3 }
+
+-- Definicao de objetos
+customTrapsObjects OBJECT IDENTIFIER ::= { customTrapsMIB 1 }
+customTrapsNotifications OBJECT IDENTIFIER ::= { customTrapsMIB 0 }
+
+-- Objetos para informacoes dos traps
+currentTemperature OBJECT-TYPE
+    SYNTAX      Integer32
+    UNITS       "Celsius"
+    MAX-ACCESS  accessible-for-notify
+    STATUS      current
+    DESCRIPTION
+        "Temperatura atual do equipamento em graus Celsius."
+    ::= { customTrapsObjects 1 }
+
+temperatureThreshold OBJECT-TYPE
+    SYNTAX      Integer32
+    UNITS       "Celsius"
+    MAX-ACCESS  accessible-for-notify
+    STATUS      current
+    DESCRIPTION
+        "Limite de temperatura configurado para alerta."
+    ::= { customTrapsObjects 2 }
+
+diskPartition OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..255))
+    MAX-ACCESS  accessible-for-notify
+    STATUS      current
+    DESCRIPTION
+        "Nome da particao de disco (ex: /dev/sda1, C:, /)."
+    ::= { customTrapsObjects 3 }
+
+diskUsagePercent OBJECT-TYPE
+    SYNTAX      Integer32 (0..100)
+    UNITS       "percent"
+    MAX-ACCESS  accessible-for-notify
+    STATUS      current
+    DESCRIPTION
+        "Percentual de uso da particao de disco."
+    ::= { customTrapsObjects 4 }
+
+diskTotalMB OBJECT-TYPE
+    SYNTAX      Integer32
+    UNITS       "MB"
+    MAX-ACCESS  accessible-for-notify
+    STATUS      current
+    DESCRIPTION
+        "Tamanho total da particao em Megabytes."
+    ::= { customTrapsObjects 5 }
+
+diskUsedMB OBJECT-TYPE
+    SYNTAX      Integer32
+    UNITS       "MB"
+    MAX-ACCESS  accessible-for-notify
+    STATUS      current
+    DESCRIPTION
+        "Espaco utilizado da particao em Megabytes."
+    ::= { customTrapsObjects 6 }
+
+alertTimestamp OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  accessible-for-notify
+    STATUS      current
+    DESCRIPTION
+        "Timestamp do alerta no formato ISO 8601."
+    ::= { customTrapsObjects 7 }
+
+alertSeverity OBJECT-TYPE
+    SYNTAX      INTEGER {
+                    info(1),
+                    warning(2),
+                    critical(3)
+                }
+    MAX-ACCESS  accessible-for-notify
+    STATUS      current
+    DESCRIPTION
+        "Severidade do alerta:
+         info(1) - Informacional
+         warning(2) - Aviso
+         critical(3) - Critico"
+    ::= { customTrapsObjects 8 }
+
+-- Definicao dos Traps
+myHighTemperatureTrap NOTIFICATION-TYPE
+    OBJECTS {
+        currentTemperature,
+        temperatureThreshold,
+        alertTimestamp,
+        alertSeverity
+    }
+    STATUS      current
+    DESCRIPTION
+        "Este trap e enviado quando a temperatura do equipamento
+         ultrapassa o limite seguro configurado (ex: > 70 C).
+         
+         Objetos incluidos:
+         - currentTemperature: Temperatura atual em Celsius
+         - temperatureThreshold: Limite configurado
+         - alertTimestamp: Momento do alerta
+         - alertSeverity: Severidade (warning ou critical)"
+    ::= { customTrapsNotifications 1 }
+
+myDiskFullTrap NOTIFICATION-TYPE
+    OBJECTS {
+        diskPartition,
+        diskUsagePercent,
+        diskTotalMB,
+        diskUsedMB,
+        alertTimestamp,
+        alertSeverity
+    }
+    STATUS      current
+    DESCRIPTION
+        "Este trap e enviado quando uma particao de disco atinge
+         capacidade critica (ex: > 95% cheio).
+         
+         Objetos incluidos:
+         - diskPartition: Nome da particao
+         - diskUsagePercent: Percentual de uso
+         - diskTotalMB: Tamanho total em MB
+         - diskUsedMB: Espaco usado em MB
+         - alertTimestamp: Momento do alerta
+         - alertSeverity: Severidade (warning ou critical)"
+    ::= { customTrapsNotifications 2 }
+
+-- Configuracao de monitoramento
+temperatureMonitorEnabled OBJECT-TYPE
+    SYNTAX      INTEGER {
+                    disabled(0),
+                    enabled(1)
+                }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Habilita ou desabilita o monitoramento de temperatura."
+    DEFVAL      { enabled }
+    ::= { customTrapsObjects 9 }
+
+diskMonitorEnabled OBJECT-TYPE
+    SYNTAX      INTEGER {
+                    disabled(0),
+                    enabled(1)
+                }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Habilita ou desabilita o monitoramento de disco."
+    DEFVAL      { enabled }
+    ::= { customTrapsObjects 10 }
+
+temperatureCheckInterval OBJECT-TYPE
+    SYNTAX      Integer32 (10..3600)
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Intervalo de verificacao de temperatura em segundos."
+    DEFVAL      { 60 }
+    ::= { customTrapsObjects 11 }
+
+diskCheckInterval OBJECT-TYPE
+    SYNTAX      Integer32 (60..86400)
+    UNITS       "seconds"
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Intervalo de verificacao de disco em segundos."
+    DEFVAL      { 300 }
+    ::= { customTrapsObjects 12 }
+
+-- Conformidade
+customTrapsConformance OBJECT IDENTIFIER ::= { customTrapsMIB 2 }
+
+customTrapsCompliances OBJECT IDENTIFIER ::= { customTrapsConformance 1 }
+customTrapsGroups      OBJECT IDENTIFIER ::= { customTrapsConformance 2 }
+
+customTrapsNotificationGroup NOTIFICATION-GROUP
+    NOTIFICATIONS {
+        myHighTemperatureTrap,
+        myDiskFullTrap
+    }
+    STATUS      current
+    DESCRIPTION
+        "Grupo de notificacoes (traps) customizadas."
+    ::= { customTrapsGroups 1 }
+
+END

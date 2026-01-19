@@ -1,0 +1,107 @@
+# snmptrapd.conf - SNMP Trap Daemon Configuration
+# Tarefa 03: CUSTOM-TRAPS-MIB
+# Configuração para receber e processar traps de temperatura e disco
+
+# ============================================================================
+# AUTHENTICATION & ACCESS CONTROL
+# ============================================================================
+# authCommunity <sec> <community_string> <source>
+# ACCEPT: aceita traps desta community
+# LOG: aceita e loga traps desta community
+# EXECUTE: aceita e pode executar comandos (CUIDADO!)
+authCommunity log,execute,net public
+
+# Aceitar SNMPv1 e SNMPv2c
+disableAuthorization yes
+
+# ============================================================================
+# LOGGING CONFIGURATION
+# ============================================================================
+# format1: formato das mensagens de trap (uma linha)
+# %V = versão SNMP
+# %P = protocolo (UDP)
+# %a = endereço de origem
+# %b = nome do host de origem
+# %B = timestamp
+# %N = OID da notificação (trap OID)
+# %v = lista de variáveis (varbinds)
+format1 "%V\n%a [%b] %B:\n%N\n%v\n"
+
+# format2: formato executável (mais detalhado)
+format2 "%V\n%a [%b] %B:\n%N\n%v\n"
+
+# Logar em arquivo (comentado - use syslog em produção)
+# Para logar em arquivo, redirecione a saída do snmptrapd:
+# sudo snmptrapd -f -Lo > /var/log/snmptrapd.log 2>&1
+
+# Nível de debug (descomente para troubleshooting)
+# doDebugging 1
+# logOption s 7  # syslog priority: 7=debug, 6=info, 5=notice
+
+# ============================================================================
+# TRAP HANDLING
+# ============================================================================
+# traphandle: executa comando quando trap específico é recebido
+# Sintaxe: traphandle <OID> <comando>
+
+# High Temperature Trap (.1.3.6.1.4.1.99999.0.1)
+traphandle .1.3.6.1.4.1.99999.0.1 /usr/local/bin/handle_temperature_trap.sh
+
+# Disk Full Trap (.1.3.6.1.4.1.99999.0.2)
+traphandle .1.3.6.1.4.1.99999.0.2 /usr/local/bin/handle_disk_trap.sh
+
+# Default trap handler (todos os traps não especificados acima)
+# traphandle default /usr/local/bin/handle_default_trap.sh
+
+# ============================================================================
+# FORWARD TRAPS (opcional)
+# ============================================================================
+# forward: encaminha traps recebidos para outro destino
+# Útil para sistemas de gerência centralizados (Nagios, Zabbix, etc.)
+# forward <default|oid> <destination>
+# forward default udp:192.168.1.100:162
+
+# ============================================================================
+# SNMP VERSION SUPPORT
+# ============================================================================
+# SNMPv1 e SNMPv2c: community-based (configurado acima)
+# SNMPv3: user-based (comentado por enquanto)
+# createUser -e 0x8000000001020304 myuser SHA mypassword AES myencryptionkey
+# authUser log,execute myuser
+
+# ============================================================================
+# TESTING & TROUBLESHOOTING
+# ============================================================================
+# Para testar a recepção de traps:
+#
+# 1. Iniciar snmptrapd em modo foreground com logging:
+#    sudo snmptrapd -f -Lo -c /etc/snmp/snmptrapd.conf
+#
+# 2. Em outro terminal, enviar trap de teste:
+#    snmptrap -v 2c -c public localhost '' .1.3.6.1.4.1.99999.0.1 \
+#        .1.3.6.1.4.1.99999.3.1.1.0 i 85 \
+#        .1.3.6.1.4.1.99999.3.1.2.0 i 70 \
+#        .1.3.6.1.4.1.99999.3.1.7.0 s "2026-01-19 10:30:00" \
+#        .1.3.6.1.4.1.99999.3.1.8.0 i 2
+#
+# 3. Verificar logs:
+#    tail -f /var/log/snmptrapd.log
+#    tail -f /var/log/syslog | grep snmptrapd
+#
+# ============================================================================
+# INSTALLATION
+# ============================================================================
+# sudo cp snmptrapd.conf.example /etc/snmp/snmptrapd.conf
+# sudo systemctl restart snmptrapd
+# sudo systemctl enable snmptrapd
+# sudo systemctl status snmptrapd
+#
+# ============================================================================
+# NOTES
+# ============================================================================
+# - Porta padrão: UDP 162 (requer root/sudo)
+# - Community string: 'public' (mudar em produção!)
+# - Logs: /var/log/snmptrapd.log
+# - MIB: /usr/share/snmp/mibs/CUSTOM-TRAPS-MIB.txt
+# - Scripts handlers devem ter permissão de execução (chmod +x)
+# - Handlers recebem trap via STDIN (formato: OID valor)
