@@ -119,7 +119,7 @@ Tarefa01_MIB_Control/
 
 ---
 
-## � GUIA DE INSTALAÇÃO PASSO A PASSO
+## GUIA DE INSTALAÇÃO PASSO A PASSO
 
 ### Pré-requisitos
 - Ubuntu 20.04+ (ou Debian-based)
@@ -274,7 +274,7 @@ chmod +x teste_completo.sh
 
 ---
 
-## 🧪 TESTES DETALHADOS
+## TESTES DETALHADOS
 
 ### Teste 1: GET - Ler Status do Serviço
 
@@ -634,15 +634,15 @@ snmpd_control_agent.sh:
 
 ---
 
-## 👥 AUTORES
+## AUTORES
 
 - **ANTONIA MAYARA DA SILVA NASCIMENTO**
 - **JOÃO BATISTA DE SANTANA SILVA**  
 - **Marcos Dantas Ortiz**
 
-**Instituição**: Mestrado em Ciência da Computação (MDCC) - UFC  
+**Instituição**: Mestrado e Doutorado em Ciência da Computação (MDCC) - UFC  
 **Disciplina**: Gerência de Redes de Computadores  
-**Professor**: [Nome do Professor]  
+**Professor**: José Neuman  
 **Data**: Janeiro 2026  
 **Versão**: 1.0 (Validada e Testada)
 
@@ -784,7 +784,7 @@ iso.3.6.1.4.1.99999.1.1.3.0 = STRING: "Sat 2026-01-17 10:14:28 -03"
 
 **VALIDAÇÃO**: Uptime mudou de `10:11:05` para `10:14:28` confirmando que o restart foi executado!
 
-## 🔍 Detalhes Técnicos
+## Detalhes Técnicos
 
 ### Protocolo pass
 - O snmpd executa scripts externos via protocolo `pass` (one-shot)
@@ -841,12 +841,3 @@ cat /tmp/snmp_set.log
 - RFC 2580: Conformance Statements for SMIv2
 - Net-SNMP Documentation: http://www.net-snmp.org/docs/
 - snmpd.conf(5): man page para configuração do snmpd
-
-## 👥 Autores
-
-- ANTONIA MAYARA DA SILVA NASCIMENTO
-- JOÃO BATISTA DE SANTANA SILVA
-- Marcos Dantas Ortiz
-
-**Curso**: Gerência de Redes - MDCC/UFC  
-**Data**: Janeiro 2026
