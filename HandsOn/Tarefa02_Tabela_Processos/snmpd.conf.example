@@ -1,0 +1,109 @@
+# Configuração do snmpd para PROCESS-TABLE-MIB
+# Tarefa 02 - Gerência de Redes
+# Copie este arquivo para /etc/snmp/snmpd.conf (fazer backup antes!)
+# Ou adicione as linhas relevantes ao seu snmpd.conf existente
+
+###############################################################################
+# LISTEN ADDRESS
+###############################################################################
+# Escutar em todas as interfaces na porta UDP 161
+agentAddress udp:161
+
+###############################################################################
+# ACCESS CONTROL
+###############################################################################
+# Criar uma VIEW que inclui nosso OID customizado
+view   systemonly  included   .1.3.6.1.2.1.1
+view   systemonly  included   .1.3.6.1.2.1.25.1
+view   systemonly  included   .1.3.6.1.4.1.99999
+
+# Permitir acesso read-only com community 'public' de qualquer origem
+rocommunity public  default    -V systemonly
+rocommunity6 public  default   -V systemonly
+
+# Permitir acesso read-write com community 'private' apenas de localhost
+rwcommunity private  localhost    -V systemonly
+
+###############################################################################
+# SYSTEM INFORMATION
+###############################################################################
+sysLocation    Laboratório MDCC/UFC
+sysContact     gerencia-redes@mdcc.ufc.br
+sysServices    72
+
+###############################################################################
+# PASS - DELEGAÇÃO PARA AGENTES EXTERNOS
+###############################################################################
+# Delegar OID .1.3.6.1.4.1.99999.1 (CUSTOM-CONTROL-MIB - Tarefa 01)
+pass .1.3.6.1.4.1.99999.1 /usr/local/bin/snmpd_control_agent.sh
+
+# Delegar OID .1.3.6.1.4.1.99999.2 (PROCESS-TABLE-MIB - Tarefa 02)
+pass .1.3.6.1.4.1.99999.2 /usr/local/bin/process_table_agent.sh
+
+###############################################################################
+# LOG
+###############################################################################
+# Desabilitar logs excessivos (remover # para debug)
+#dontLogTCPWrappersConnects yes
+
+###############################################################################
+# NOTAS DE INSTALAÇÃO - TAREFA 02
+###############################################################################
+# 1. Copie o agente para /usr/local/bin/
+#    sudo cp process_table_agent.sh /usr/local/bin/
+#    sudo chmod +x /usr/local/bin/process_table_agent.sh
+#
+# 2. Copie a MIB para /usr/share/snmp/mibs/
+#    sudo cp PROCESS-TABLE-MIB.txt /usr/share/snmp/mibs/
+#
+# 3. Faça backup do snmpd.conf original
+#    sudo cp /etc/snmp/snmpd.conf /etc/snmp/snmpd.conf.backup
+#
+# 4. Adicione a linha de delegação ao snmpd.conf
+#    echo "pass .1.3.6.1.4.1.99999.2 /usr/local/bin/process_table_agent.sh" | \
+#    sudo tee -a /etc/snmp/snmpd.conf
+#
+# 5. Certifique-se de que a VIEW inclui o OID 99999
+#    sudo grep "view.*99999" /etc/snmp/snmpd.conf
+#    # Se não existir, adicione:
+#    echo "view systemonly included .1.3.6.1.4.1.99999" | \
+#    sudo tee -a /etc/snmp/snmpd.conf
+#
+# 6. Reinicie o snmpd
+#    sudo systemctl restart snmpd
+#    sudo systemctl status snmpd
+#
+# 7. Teste
+#    snmpwalk -v2c -c public localhost .1.3.6.1.4.1.99999.2
+#    # Deve retornar 100 entradas (5 colunas × 20 processos)
+#
+# 8. Teste Table View no iReasoning MIB Browser
+#    - Carregar PROCESS-TABLE-MIB.txt
+#    - Navegar até processTable
+#    - Clicar com botão direito → Table View
+
+###############################################################################
+# TROUBLESHOOTING
+###############################################################################
+# Problema: "No Such Instance" ou "No more variables left"
+# Solução 1: Verificar se o agente tem permissão de execução
+#    ls -l /usr/local/bin/process_table_agent.sh
+#    sudo chmod +x /usr/local/bin/process_table_agent.sh
+#
+# Solução 2: Testar agente diretamente
+#    /usr/local/bin/process_table_agent.sh -n .1.3.6.1.4.1.99999.2.1.1.1
+#    # Deve retornar 3 linhas: OID, tipo, valor
+#
+# Solução 3: Verificar VIEW
+#    sudo grep "view.*99999" /etc/snmp/snmpd.conf
+#
+# Solução 4: Verificar logs
+#    sudo tail -f /var/log/syslog | grep snmp
+#
+# Problema: Timeout nas consultas
+# Solução: Verificar se ps está instalado e funcional
+#    ps -eo pid,%cpu,%mem,etime,comm --sort=-%cpu | head -5
+#
+# Problema: Valores incorretos ou vazios
+# Solução: Testar get_process_list
+#    bash -c 'source /usr/local/bin/process_table_agent.sh; get_process_list'
