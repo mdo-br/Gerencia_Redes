@@ -1,0 +1,150 @@
+PROCESS-TABLE-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY, OBJECT-TYPE, enterprises, Integer32, Gauge32
+        FROM SNMPv2-SMI
+    TEXTUAL-CONVENTION, DisplayString
+        FROM SNMPv2-TC
+    MODULE-COMPLIANCE, OBJECT-GROUP
+        FROM SNMPv2-CONF;
+
+processTableMIB MODULE-IDENTITY
+    LAST-UPDATED "202601180000Z"
+    ORGANIZATION "MDCC - UFC"
+    CONTACT-INFO
+        "ANTONIA MAYARA DE ALMEIDA DA SILVA
+        mayaraalmeida@alu.ufc.br
+        JOÃO BATISTA ANDRADE DOS SANTOS
+        batistajoaoguns@alu.ufc.br
+        Marcos Dantas Ortiz
+        mdo@ufc.br"
+    DESCRIPTION
+        "MIB para tabela de processos do sistema.
+         Fornece informacoes sobre processos em execucao incluindo
+         PID, nome, uso de CPU, memoria e uptime."
+    REVISION "202512150000Z"
+    DESCRIPTION "Versao inicial da MIB de processos"
+    ::= { enterprises 99999 2 }
+
+-- Definicao de objetos
+processTableObjects OBJECT IDENTIFIER ::= { processTableMIB 1 }
+
+-- Tabela de processos
+processTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF ProcessEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Tabela contendo informacoes sobre processos em execucao no sistema."
+    ::= { processTableObjects 1 }
+
+processEntry OBJECT-TYPE
+    SYNTAX      ProcessEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Uma entrada na tabela de processos, indexada sequencialmente de 1 a 20.
+         A tabela contem os 20 processos com maior uso de CPU."
+    INDEX       { processIndex }
+    ::= { processTable 1 }
+
+ProcessEntry ::= SEQUENCE {
+    processIndex        Integer32,
+    processPID          Integer32,
+    processName         DisplayString,
+    processCPUPercent   Gauge32,
+    processMemoryMB     Gauge32,
+    processUptime       DisplayString
+}
+
+processIndex OBJECT-TYPE
+    SYNTAX      Integer32 (1..20)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Indice sequencial da entrada na tabela (1-20).
+         Serve como INDEX da tabela."
+    ::= { processEntry 1 }
+
+processPID OBJECT-TYPE
+    SYNTAX      Integer32 (1..2147483647)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Identificador unico do processo (Process ID) no sistema operacional.
+         PID real do processo."
+    ::= { processEntry 2 }
+
+processName OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..255))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Nome do processo em execucao."
+    ::= { processEntry 3 }
+
+processCPUPercent OBJECT-TYPE
+    SYNTAX      Gauge32
+    UNITS       "percent"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Percentual de uso de CPU pelo processo (0-100)."
+    ::= { processEntry 4 }
+
+processMemoryMB OBJECT-TYPE
+    SYNTAX      Gauge32
+    UNITS       "MB"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Memoria utilizada pelo processo em Megabytes."
+    ::= { processEntry 5 }
+
+processUptime OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..64))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Tempo de execucao do processo desde o inicio.
+         Formato: HH:MM:SS ou DD-HH:MM:SS"
+    ::= { processEntry 6 }
+
+-- Informacoes gerais
+processTotalCount OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Numero total de processos em execucao no sistema."
+    ::= { processTableObjects 2 }
+
+-- Conformidade
+processTableConformance OBJECT IDENTIFIER ::= { processTableMIB 2 }
+
+processTableCompliances OBJECT IDENTIFIER ::= { processTableConformance 1 }
+processTableGroups      OBJECT IDENTIFIER ::= { processTableConformance 2 }
+
+processTableCompliance MODULE-COMPLIANCE
+    STATUS      current
+    DESCRIPTION
+        "Requisitos de conformidade para implementacao desta MIB."
+    MODULE
+        MANDATORY-GROUPS { processTableGroup }
+    ::= { processTableCompliances 1 }
+
+processTableGroup OBJECT-GROUP
+    OBJECTS {
+        processPID,
+        processName,
+        processCPUPercent,
+        processMemoryMB,
+        processUptime,
+        processTotalCount
+    }
+    STATUS      current
+    DESCRIPTION
+        "Grupo de objetos para tabela de processos."
+    ::= { processTableGroups 1 }
+
+END
