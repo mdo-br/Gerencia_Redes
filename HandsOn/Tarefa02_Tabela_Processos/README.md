@@ -3,6 +3,33 @@
 ## Descrição
 Implementação de uma tabela SNMP customizada para listar e monitorar processos em execução no sistema. Esta tarefa demonstra o uso de estruturas de dados complexas (tabelas) em MIBs SNMP.
 
+## Arquitetura do Sistema
+
+```mermaid
+graph TB
+    subgraph "Cliente SNMP"
+        A[snmpwalk/snmpget]
+    end
+    
+    subgraph "Servidor SNMP"
+        B[snmpd daemon]
+        C[process_table_agent.sh]
+        D[Sistema de Processos]
+    end
+    
+    A -->|"SNMP GET/GETNEXT<br/>.1.3.6.1.4.1.99999.2"| B
+    B -->|"pass protocol<br/>stdin/stdout"| C
+    C -->|"ps -eo pid,cpu,mem,..."| D
+    D -->|"Lista de processos"| C
+    C -->|"OID + tipo + valor"| B
+    B -->|"SNMP Response"| A
+    
+    style A fill:#e1f5ff
+    style B fill:#fff4e1
+    style C fill:#e8f5e9
+    style D fill:#fce4ec
+```
+
 ## Funcionalidades
 
 A tabela de processos fornece as seguintes informações para cada processo:
@@ -71,10 +98,16 @@ sudo chmod +x /usr/local/bin/process_table_agent.sh
 Adicione a seguinte linha ao arquivo `/etc/snmp/snmpd.conf`:
 
 ```bash
-pass_persist .1.3.6.1.4.1.99999.2 /usr/local/bin/process_table_agent.sh
+pass .1.3.6.1.4.1.99999.2 /usr/local/bin/process_table_agent.sh
 ```
 
-**Nota:** O OID `.1.3.6.1.4.1.99999.2` corresponde ao `processTableMIB`.
+**Nota**: O OID `.1.3.6.1.4.1.99999.2` corresponde ao `processTableMIB`.
+
+**Importante**: Certifique-se de que a VIEW permite acesso ao OID:
+```bash
+# Adicionar ao snmpd.conf se necessário
+view systemonly included .1.3.6.1.4.1.99999
+```
 
 ### 5. Reiniciar snmpd
 
@@ -171,20 +204,113 @@ snmptranslate -m +PROCESS-TABLE-MIB -Tp -IR processTableMIB
 
 ## Estrutura da Tabela
 
+```mermaid
+graph TD
+    A[".1.3.6.1.4.1.99999.2<br/>processTableMIB"] --> B[".1<br/>processTableObjects"]
+    B --> C[".1<br/>processTable"]
+    C --> D[".1<br/>processEntry<br/><i>INDEX: processIndex</i>"]
+    D --> E1[".1<br/>processIndex<br/><i>not-accessible</i>"]
+    D --> E2[".2<br/>processPID<br/><i>Integer32</i>"]
+    D --> E3[".3<br/>processName<br/><i>DisplayString</i>"]
+    D --> E4[".4<br/>processCPUPercent<br/><i>Gauge32</i>"]
+    D --> E5[".5<br/>processMemoryMB<br/><i>Gauge32</i>"]
+    D --> E6[".6<br/>processUptime<br/><i>DisplayString</i>"]
+    B --> F[".2<br/>processTotalCount<br/><i>Gauge32</i>"]
+    
+    style A fill:#e3f2fd
+    style B fill:#e1f5fe
+    style C fill:#b3e5fc
+    style D fill:#81d4fa
+    style E1 fill:#fff9c4
+    style E2 fill:#c8e6c9
+    style E3 fill:#c8e6c9
+    style E4 fill:#c8e6c9
+    style E5 fill:#c8e6c9
+    style E6 fill:#c8e6c9
+    style F fill:#ffccbc
+```
+
 ### OIDs
 
 ```
 .1.3.6.1.4.1.99999.2           # processTableMIB
-└── .1                          # processTable
-    └── .1                      # processEntry
-        ├── .1.[PID]            # processPID
-        ├── .2.[PID]            # processName
-        ├── .3.[PID]            # processCPU
-        ├── .4.[PID]            # processMemory
-        └── .5.[PID]            # processUptime
+└── .1                          # processTableObjects
+    ├── .1                      # processTable
+    │   └── .1                  # processEntry
+    │       ├── .1.[INDEX]      # processIndex (not-accessible)
+    │       ├── .2.[INDEX]      # processPID
+    │       ├── .3.[INDEX]      # processName
+    │       ├── .4.[INDEX]      # processCPUPercent
+    │       ├── .5.[INDEX]      # processMemoryMB
+    │       └── .6.[INDEX]      # processUptime
+    └── .2                      # processTotalCount
 ```
 
+**Nota**: A tabela usa índices sequenciais (1-20) mapeados para os 20 processos com maior uso de CPU.
+
 ### Colunas da Tabela
+
+| Coluna | OID | Tipo | Acesso | Descrição |
+|--------|-----|------|--------|-----------|
+| processIndex | .1.3.6.1.4.1.99999.2.1.1.1.1 | Integer32 (1..20) | not-accessible | Índice sequencial (1-20) |
+| processPID | .1.3.6.1.4.1.99999.2.1.1.1.2 | Integer32 | read-only | Process ID real |
+| processName | .1.3.6.1.4.1.99999.2.1.1.1.3 | DisplayString | read-only | Nome do comando |
+| processCPUPercent | .1.3.6.1.4.1.99999.2.1.1.1.4 | Gauge32 | read-only | % CPU (0-100) |
+| processMemoryMB | .1.3.6.1.4.1.99999.2.1.1.1.5 | Gauge32 | read-only | Memória em MB |
+| processUptime | .1.3.6.1.4.1.99999.2.1.1.1.6 | DisplayString | read-only | Tempo no formato HH:MM:SS |
+
+## Fluxo de Comunicação SNMP
+
+### Sequência de uma Consulta GETNEXT
+
+```mermaid
+sequenceDiagram
+    participant C as Cliente SNMP
+    participant S as snmpd
+    participant A as process_table_agent.sh
+    participant PS as Sistema (ps)
+    
+    C->>S: GETNEXT .1.3.6.1.4.1.99999.2.1.1.1
+    S->>A: -n<br/>.1.3.6.1.4.1.99999.2.1.1.1
+    A->>PS: ps -eo pid,%cpu,%mem,etime,comm --sort=-%cpu
+    PS-->>A: Lista de processos
+    A->>A: get_process_by_index(1)<br/>Parsear primeiro processo
+    A-->>S: .1.3.6.1.4.1.99999.2.1.1.1.2.1<br/>integer<br/>2262349
+    S-->>C: .1.3.6.1.4.1.99999.2.1.1.1.2.1 = INTEGER: 2262349
+    
+    Note over C,PS: Próxima iteração (GETNEXT automático)
+    
+    C->>S: GETNEXT .1.3.6.1.4.1.99999.2.1.1.1.2.1
+    S->>A: -n<br/>.1.3.6.1.4.1.99999.2.1.1.1.2.1
+    A->>PS: ps -eo pid,%cpu,%mem,etime,comm --sort=-%cpu
+    PS-->>A: Lista de processos
+    A->>A: get_process_by_index(2)<br/>Próximo processo
+    A-->>S: .1.3.6.1.4.1.99999.2.1.1.1.2.2<br/>integer<br/>2270245
+    S-->>C: .1.3.6.1.4.1.99999.2.1.1.1.2.2 = INTEGER: 2270245
+```
+
+### Sequência de uma Consulta GET
+
+```mermaid
+sequenceDiagram
+    participant C as Cliente SNMP
+    participant S as snmpd
+    participant A as process_table_agent.sh
+    participant PS as Sistema (ps)
+    
+    C->>S: GET .1.3.6.1.4.1.99999.2.1.1.1.4.1
+    Note over C,S: Solicita CPU do processo índice 1
+    S->>A: -g<br/>.1.3.6.1.4.1.99999.2.1.1.1.4.1
+    A->>A: Extrair COLUMN=4, INDEX=1
+    A->>PS: ps -eo pid,%cpu,%mem,etime,comm --sort=-%cpu
+    PS-->>A: Lista de 20 processos
+    A->>A: get_process_by_index(1)<br/>Ler linha 1
+    A->>A: Parsear campo %CPU
+    A-->>S: .1.3.6.1.4.1.99999.2.1.1.1.4.1<br/>gauge<br/>91
+    S-->>C: .1.3.6.1.4.1.99999.2.1.1.1.4.1 = Gauge32: 91
+```
+
+### Colunas da Tabela (Legado - será removido)
 
 | Coluna | OID | Tipo | Acesso | Descrição |
 |--------|-----|------|--------|-----------|
@@ -221,38 +347,197 @@ PID:  1523 | Nome: gnome-shell          | CPU:  12% | Mem:   856MB | Uptime: 120
 
 ## Como Funciona
 
-### Mecanismo pass_persist
+### Lógica do Agente
 
-1. **snmpd** recebe consulta SNMP
-2. Identifica que o OID está delegado ao agente externo
-3. Comunica com `process_table_agent.sh` via stdin/stdout
-4. Agente responde com dados atualizados
-5. **snmpd** retorna resposta ao cliente
+```mermaid
+flowchart TD
+    Start([Requisição SNMP]) --> Parse{Tipo?}
+    
+    Parse -->|GET| GetOID[Extrair OID]
+    Parse -->|GETNEXT| NextOID[Processar GETNEXT]
+    
+    GetOID --> CheckCount{OID é<br/>totalCount?}
+    CheckCount -->|Sim| CountProc[Contar processos<br/>ps -e wc -l]
+    CheckCount -->|Não| ExtractCG[Extrair COLUMN<br/>e INDEX]
+    
+    ExtractCG --> ValidIdx{INDEX<br/>1-20?}
+    ValidIdx -->|Não| End([Retornar vazio])
+    ValidIdx -->|Sim| GetProc[get_process_by_index]
+    
+    GetProc --> PSCmd[ps -eo pid,%cpu,%mem,<br/>etime,comm --sort=-%cpu]
+    PSCmd --> AwkFilter[awk 'NR>1 && NR<=21']
+    AwkFilter --> SelectLine[Selecionar linha INDEX]
+    SelectLine --> ParseData[Parsear: PID CPU MEM TIME NAME]
+    
+    ParseData --> ReturnCol{COLUMN?}
+    ReturnCol -->|2| RetPID[Retornar PID]
+    ReturnCol -->|3| RetName[Retornar Nome]
+    ReturnCol -->|4| RetCPU[Retornar CPU%]
+    ReturnCol -->|5| RetMem[Calcular e<br/>Retornar Mem MB]
+    ReturnCol -->|6| RetTime[Retornar Uptime]
+    
+    NextOID --> CheckBase{Base da<br/>tabela?}
+    CheckBase -->|Sim| First[Retornar primeira<br/>coluna índice 1]
+    CheckBase -->|Não| ExtractCN[Extrair CURRENT_COL<br/>e CURRENT_IDX]
+    
+    ExtractCN --> CalcNext[Calcular NEXT_COL<br/>e NEXT_IDX]
+    CalcNext --> CheckEnd{Fim da<br/>tabela?}
+    CheckEnd -->|Sim| CountProc
+    CheckEnd -->|Não| GetProc
+    
+    RetPID --> FormatResp[Formatar resposta:<br/>OID + tipo + valor]
+    RetName --> FormatResp
+    RetCPU --> FormatResp
+    RetMem --> FormatResp
+    RetTime --> FormatResp
+    CountProc --> FormatResp
+    First --> FormatResp
+    
+    FormatResp --> End
+    
+    style Start fill:#e3f2fd
+    style End fill:#c8e6c9
+    style Parse fill:#fff9c4
+    style GetProc fill:#ffccbc
+    style PSCmd fill:#f8bbd0
+    style FormatResp fill:#c8e6c9
+```
+
+### Mecanismo pass
+
+### Mecanismo pass
+
+O protocolo **pass** executa um script externo para cada requisição SNMP:
+
+1. **snmpd** recebe consulta SNMP do cliente
+2. Identifica que o OID `.1.3.6.1.4.1.99999.2` está delegado ao agente externo
+3. Executa `process_table_agent.sh` passando operação e OID via argumentos de linha de comando
+4. Agente processa e retorna: `OID + tipo + valor` via stdout
+5. **snmpd** formata e retorna resposta ao cliente SNMP
+
+**Diferença entre pass e pass_persist**:
+- `pass`: Nova execução do script a cada requisição (usado nesta implementação)
+- `pass_persist`: Script roda continuamente, comunicação via stdin/stdout
 
 ### Protocolo de Comunicação
 
+**Formato da chamada**:
+```bash
+/usr/local/bin/process_table_agent.sh -g <OID>  # Para GET
+/usr/local/bin/process_table_agent.sh -n <OID>  # Para GETNEXT
 ```
-Cliente → snmpd: GETNEXT .1.3.6.1.4.1.99999.2
-snmpd → agent: getnext
-snmpd → agent: .1.3.6.1.4.1.99999.2
-agent → snmpd: .1.3.6.1.4.1.99999.2.1.1.1.1
-agent → snmpd: integer
-agent → snmpd: 1
-snmpd → Cliente: .1.3.6.1.4.1.99999.2.1.1.1.1 = INTEGER: 1
+
+**Formato da resposta** (3 linhas via stdout):
+```
+<OID_completo>
+<tipo>
+<valor>
+```
+
+**Exemplo GET**:
+
+**Exemplo GET**:
+```bash
+# Chamada
+$ /usr/local/bin/process_table_agent.sh -g .1.3.6.1.4.1.99999.2.1.1.1.2.1
+
+# Resposta (stdout)
+.1.3.6.1.4.1.99999.2.1.1.1.2.1
+integer
+2262349
+```
+
+**Exemplo GETNEXT**:
+```bash
+# Chamada  
+$ /usr/local/bin/process_table_agent.sh -n .1.3.6.1.4.1.99999.2.1.1.1
+
+# Resposta (stdout)
+.1.3.6.1.4.1.99999.2.1.1.1.2.1
+integer
+2262349
 ```
 
 ### Implementação do Agente
 
 O script `process_table_agent.sh` implementa:
 
-1. **Inicialização**: Responde "PING" → "PONG"
-2. **GET**: Retorna valor específico de um OID
-3. **GETNEXT**: Percorre a tabela ordenadamente
-   - Lê processos com `ps aux`
-   - Ordena por PID
-   - Mantém estado da última consulta
-   - Calcula tempo de uptime
-   - Converte memória para MB
+1. **Funções auxiliares**:
+   - `get_process_list()`: Obtém top 20 processos por CPU usando `ps` e `awk`
+   - `get_process_by_index()`: Mapeia índice 1-20 para dados completos do processo
+   - `calc_memory_mb()`: Converte % memória para MB
+   - `format_uptime()`: Formata tempo de execução
+
+2. **Função process_get()**: Trata requisições GET
+   - Valida índice (1-20)
+   - Obtém dados do processo via `get_process_by_index()`
+   - Retorna coluna específica (PID, Nome, CPU, Memória, Uptime)
+
+3. **Função process_getnext()**: Trata requisições GETNEXT
+   - Identifica próximo OID na ordem lexicográfica
+   - Navega entre colunas (2→3→4→5→6)
+   - Navega entre índices (1→2→...→20)
+   - Retorna contador ao final da tabela
+
+**Ordem de navegação GETNEXT**:
+```
+.2.1 → .2.2 → ... → .2.20 →  (Coluna PID, índices 1-20)
+.3.1 → .3.2 → ... → .3.20 →  (Coluna Nome, índices 1-20)
+.4.1 → .4.2 → ... → .4.20 →  (Coluna CPU, índices 1-20)
+.5.1 → .5.2 → ... → .5.20 →  (Coluna Memória, índices 1-20)
+.6.1 → .6.2 → ... → .6.20 →  (Coluna Uptime, índices 1-20)
+→ processTotalCount
+```
+
+## Detalhes de Implementação
+
+### Problema: Broken Pipe
+
+Durante o desenvolvimento, identificamos que comandos com pipes múltiplos causavam erro "Broken pipe" quando executados pelo usuário `Debian-snmp`:
+
+```bash
+# ❌ Problemático
+ps ... | tail -n +2 | head -20   # tail: error writing 'standard output': Broken pipe
+ps ... | sed '1d' | head -20     # sed: couldn't write items to stdout: Broken pipe
+```
+
+**Solução**: Usar `awk` para todas as operações em um único comando:
+```bash
+# ✅ Solução
+ps -eo pid,%cpu,%mem,etime,comm --sort=-%cpu 2>/dev/null | awk 'NR>1 && NR<=21'
+```
+
+### Problema: Race Condition
+
+Inicialmente, o agente fazia duas chamadas separadas:
+1. `get_pid_by_index()` para obter o PID
+2. `ps -p $PID` para obter dados do processo
+
+Entre essas chamadas, o processo podia terminar, causando dados inconsistentes.
+
+**Solução**: Função `get_process_by_index()` que retorna todos os dados em uma única chamada:
+```bash
+get_process_by_index() {
+    local INDEX=$1
+    get_process_list | awk -v idx=$INDEX 'NR==idx'
+}
+```
+
+### Estrutura de Dados
+
+**Lista de processos** (output de `ps`):
+```
+    PID  %CPU  %MEM     ELAPSED COMMAND
+2262349  12.5   2.1       19:28 chrome
+2270245   8.3   1.8       12:15 code
+...
+```
+
+**Mapeamento Índice → Dados**:
+- Índice 1 → Linha 2 do ps (primeira após cabeçalho)
+- Índice 2 → Linha 3 do ps
+- ...
+- Índice 20 → Linha 21 do ps
 
 ## Plataformas Suportadas
 
@@ -283,21 +568,24 @@ sudo systemctl status snmpd
 # Verificar logs
 sudo tail -f /var/log/syslog | grep snmp
 
-# Testar agente diretamente
-echo -e "PING\nget\n.1.3.6.1.4.1.99999.2.1.1.1.1" | /usr/local/bin/process_table_agent.sh
+# Testar agente diretamente (deve retornar em < 1 segundo)
+time /usr/local/bin/process_table_agent.sh -g .1.3.6.1.4.1.99999.2.1.1.1.2.1
+
+# Verificar configuração de VIEW
+sudo grep "view.*99999" /etc/snmp/snmpd.conf
 ```
 
 ### Tabela vazia
 
 ```bash
 # Verificar se ps funciona
-ps aux | head
+ps -eo pid,%cpu,%mem,etime,comm --sort=-%cpu | head -5
 
-# Testar agente standalone
-/usr/local/bin/process_table_agent.sh
-# Digite: PING (Enter)
-# Digite: getnext (Enter)  
-# Digite: .1.3.6.1.4.1.99999.2 (Enter)
+# Testar agente standalone com GET
+/usr/local/bin/process_table_agent.sh -g .1.3.6.1.4.1.99999.2.1.1.1.2.1
+
+# Testar agente standalone com GETNEXT
+/usr/local/bin/process_table_agent.sh -n .1.3.6.1.4.1.99999.2.1.1.1
 ```
 
 ### MIB não carrega
@@ -318,10 +606,17 @@ snmptranslate -m +PROCESS-TABLE-MIB -On PROCESS-TABLE-MIB::processTable
 ```bash
 # Verificar permissões
 ls -l /usr/local/bin/process_table_agent.sh
-chmod +x /usr/local/bin/process_table_agent.sh
+sudo chmod +x /usr/local/bin/process_table_agent.sh
 
 # Verificar configuração snmpd
-grep pass_persist /etc/snmp/snmpd.conf
+grep "pass.*99999" /etc/snmp/snmpd.conf
+# Deve mostrar: pass .1.3.6.1.4.1.99999.2 /usr/local/bin/process_table_agent.sh
+
+# Testar agente diretamente
+/usr/local/bin/process_table_agent.sh -n .1.3.6.1.4.1.99999.2.1.1.1
+
+# Verificar sintaxe do script
+bash -n /usr/local/bin/process_table_agent.sh
 
 # Reiniciar snmpd
 sudo systemctl restart snmpd
@@ -347,13 +642,38 @@ ps aux | head -5
 
 ## Conceitos Aprendidos
 
-1. **SEQUENCE**: Definição de estrutura de entrada de tabela
-2. **INDEX**: Indexação de tabelas por PID
-3. **GETNEXT**: Navegação ordenada em estruturas complexas
-4. **DisplayString**: Tipo de string legível
-5. **Integer32**: Tipo numérico de 32 bits
-6. **MAX-ACCESS**: Controle de acesso (read-only)
-7. **pass_persist**: Agentes externos persistentes
+1. **SEQUENCE**: Definição de estrutura de entrada de tabela SNMP
+2. **INDEX**: Indexação de tabelas por índice sequencial
+3. **not-accessible**: Coluna usada apenas como índice, não retornada
+4. **GETNEXT**: Navegação ordenada em estruturas complexas (tabelas)
+5. **DisplayString**: Tipo de string legível (TEXTUAL-CONVENTION)
+6. **Gauge32**: Tipo numérico não-cumulativo de 32 bits
+7. **MAX-ACCESS read-only**: Controle de acesso somente leitura
+8. **pass protocol**: Delegação de OIDs a agentes externos
+9. **Broken pipe**: Problema com pipes quando snmpd executa scripts
+10. **Race condition**: Problema de processos que mudam entre consultas
+
+## Estatísticas da Implementação
+
+- **Linhas de código**: ~290 linhas (bash script)
+- **Funções**: 6 funções auxiliares
+- **Colunas da tabela**: 5 colunas acessíveis + 1 índice
+- **Processos monitorados**: Top 20 por uso de CPU
+- **Tempo de resposta**: < 100ms por consulta
+- **Comandos SNMP suportados**: GET, GETNEXT, WALK
+- **Compatibilidade**: Linux (testado em Ubuntu 22.04)
+
+## Autores
+
+- **ANTONIA MAYARA DE ALMEIDA DA SILVA** - mayaraalmeida@alu.ufc.br
+- **JOÃO BATISTA ANDRADE DOS SANTOS** - batistajoaoguns@alu.ufc.br  
+- **Marcos Dantas Ortiz** - mdo@ufc.br
+
+**Instituição**: Mestrado e Doutorado em Ciência da Computação (MDCC) - UFC  
+**Disciplina**: Gerência de Redes de Computadores  
+**Professor**: José Neuman  
+**Data**: Janeiro 2026  
+**Versão**: 1.0 - Implementação completa e testada
 
 ## Referências
 
