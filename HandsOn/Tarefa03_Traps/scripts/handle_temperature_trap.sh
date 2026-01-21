@@ -55,15 +55,10 @@ echo "----------------------------------------" >> "$LOG_FILE"
 case "$SEVERITY" in
     1)
         echo "ACTION: Warning level - Logging only" >> "$LOG_FILE"
-        # Alerta sonoro leve (1 beep)
-        beep -f 800 -l 200 2>/dev/null || (speaker-test -t sine -f 800 -l 1 2>/dev/null &)
         ;;
     2)
         echo "ACTION: Critical level - Send email alert" >> "$LOG_FILE"
         # echo "High temperature alert: ${CURRENT_TEMP}°C" | mail -s "Temperature Alert" admin@example.com
-        # Alerta sonoro moderado (2 beeps)
-        beep -f 1000 -l 300 -n -f 1000 -l 300 2>/dev/null || \
-        (speaker-test -t sine -f 1000 -l 1 2>/dev/null & sleep 0.5; speaker-test -t sine -f 1000 -l 1 2>/dev/null &)
         ;;
     3)
         echo "ACTION: Emergency level - Immediate action required!" >> "$LOG_FILE"
@@ -71,9 +66,6 @@ case "$SEVERITY" in
         # - Enviar SMS
         # - Trigger de scripts de shutdown
         # - Notificações via API (Slack, Discord, etc.)
-        # Alerta sonoro de emergência (3 beeps rápidos e intensos)
-        beep -f 1500 -l 400 -n -f 1500 -l 400 -n -f 1500 -l 400 2>/dev/null || \
-        (for i in {1..3}; do speaker-test -t sine -f 1500 -l 1 2>/dev/null & sleep 0.5; done)
         ;;
     *)
         echo "ACTION: Unknown severity level" >> "$LOG_FILE"
