@@ -13,7 +13,7 @@ COMMUNITY="public"               # Community string
 CHECK_INTERVAL=300               # Intervalo de verificacao em segundos (5 min)
 
 # OIDs do CUSTOM-TRAPS-MIB
-TRAP_OID=".1.3.6.1.4.1.99999.0.2"  # myDiskFullTrap
+TRAP_OID=".1.3.6.1.4.1.99999.3.0.2"  # myDiskFullTrap
 PARTITION_OID=".1.3.6.1.4.1.99999.3.1.3.0"        # diskPartition
 USAGE_PERCENT_OID=".1.3.6.1.4.1.99999.3.1.4.0"    # diskUsagePercent
 TOTAL_MB_OID=".1.3.6.1.4.1.99999.3.1.5.0"         # diskTotalMB

@@ -13,7 +13,7 @@ COMMUNITY="public"               # Community string
 CHECK_INTERVAL=60                # Intervalo de verificacao em segundos
 
 # OIDs do CUSTOM-TRAPS-MIB
-TRAP_OID=".1.3.6.1.4.1.99999.0.1"  # myHighTemperatureTrap
+TRAP_OID=".1.3.6.1.4.1.99999.3.0.1"  # myHighTemperatureTrap
 CURRENT_TEMP_OID=".1.3.6.1.4.1.99999.3.1.1.0"     # currentTemperature
 THRESHOLD_OID=".1.3.6.1.4.1.99999.3.1.2.0"        # temperatureThreshold
 TIMESTAMP_OID=".1.3.6.1.4.1.99999.3.1.7.0"        # alertTimestamp

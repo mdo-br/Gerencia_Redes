@@ -44,11 +44,11 @@ format2 "%V\n%a [%b] %B:\n%N\n%v\n"
 # traphandle: executa comando quando trap específico é recebido
 # Sintaxe: traphandle <OID> <comando>
 
-# High Temperature Trap (.1.3.6.1.4.1.99999.0.1)
-traphandle .1.3.6.1.4.1.99999.0.1 /usr/local/bin/handle_temperature_trap.sh
+# High Temperature Trap (.1.3.6.1.4.1.99999.3.0.1)
+traphandle .1.3.6.1.4.1.99999.3.0.1 /usr/local/bin/handle_temperature_trap.sh
 
-# Disk Full Trap (.1.3.6.1.4.1.99999.0.2)
-traphandle .1.3.6.1.4.1.99999.0.2 /usr/local/bin/handle_disk_trap.sh
+# Disk Full Trap (.1.3.6.1.4.1.99999.3.0.2)
+traphandle .1.3.6.1.4.1.99999.3.0.2 /usr/local/bin/handle_disk_trap.sh
 
 # Default trap handler (todos os traps não especificados acima)
 # traphandle default /usr/local/bin/handle_default_trap.sh
@@ -78,7 +78,7 @@ traphandle .1.3.6.1.4.1.99999.0.2 /usr/local/bin/handle_disk_trap.sh
 #    sudo snmptrapd -f -Lo -c /etc/snmp/snmptrapd.conf
 #
 # 2. Em outro terminal, enviar trap de teste:
-#    snmptrap -v 2c -c public localhost '' .1.3.6.1.4.1.99999.0.1 \
+#    snmptrap -v 2c -c public localhost '' .1.3.6.1.4.1.99999.3.0.1 \
 #        .1.3.6.1.4.1.99999.3.1.1.0 i 85 \
 #        .1.3.6.1.4.1.99999.3.1.2.0 i 70 \
 #        .1.3.6.1.4.1.99999.3.1.7.0 s "2026-01-19 10:30:00" \

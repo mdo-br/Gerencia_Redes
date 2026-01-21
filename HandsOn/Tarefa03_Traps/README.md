@@ -11,6 +11,158 @@ Sistema de monitoramento com envio de **SNMP Traps** para notificar eventos crí
 - Testar envio e recepção de traps com iReasoning MIB Browser
 - Demonstrar processamento automático com handlers
 
+## Requisitos e Instalação
+
+### Pacotes Necessários
+
+#### Ubuntu/Debian
+
+```bash
+# Instalar Net-SNMP (cliente e servidor)
+sudo apt-get update
+sudo apt-get install -y snmp snmpd snmp-mibs-downloader
+
+# Instalar snmptrapd para receber traps
+sudo apt-get install -y snmptrapd
+
+# Instalar lm-sensors para monitoramento de temperatura
+sudo apt-get install -y lm-sensors
+
+# Configurar sensores (responda YES para todas as perguntas)
+sudo sensors-detect
+
+# Testar sensores
+sensors
+```
+
+#### CentOS/RHEL/Fedora
+
+```bash
+# Instalar Net-SNMP
+sudo yum install -y net-snmp net-snmp-utils
+
+# Instalar lm-sensors
+sudo yum install -y lm_sensors
+
+# Configurar sensores
+sudo sensors-detect
+
+# Testar sensores
+sensors
+```
+
+#### MacOS
+
+```bash
+# Instalar Net-SNMP via Homebrew
+brew install net-snmp
+
+# Instalar osx-cpu-temp para monitoramento de temperatura
+brew install osx-cpu-temp
+
+# Testar
+osx-cpu-temp
+```
+
+### Ferramentas Adicionais
+
+#### iReasoning MIB Browser (Todas as plataformas)
+
+```bash
+# 1. Baixar do site oficial
+# Visite: https://www.ireasoning.com/mibbrowser.shtml
+# Baixe a versão gratuita para seu sistema operacional
+
+# 2. Extrair (Linux/MacOS)
+cd ~/Downloads
+tar -xzf iReasoning-MIB-Browser.tar.gz
+mv ireasoning ~/Downloads/ireasoning
+
+# 3. Dar permissão de execução (Linux/MacOS)
+chmod +x ~/Downloads/ireasoning/mibbrowser/browser.sh
+
+# 4. Testar execução
+cd ~/Downloads/ireasoning/mibbrowser
+./browser.sh
+```
+
+#### Verificar Instalação
+
+```bash
+# Verificar versão do Net-SNMP
+snmpd -v
+
+# Verificar comandos SNMP disponíveis
+which snmpget snmpset snmpwalk snmptrap
+
+# Verificar lm-sensors (Linux)
+sensors
+
+# Verificar snmptrapd
+snmptrapd --version
+```
+
+### Configuração Inicial do snmpd
+
+```bash
+# Backup da configuração original
+sudo cp /etc/snmp/snmpd.conf /etc/snmp/snmpd.conf.backup
+
+# Configuração mínima para testes
+sudo tee /etc/snmp/snmpd.conf > /dev/null << 'EOF'
+# Permitir acesso local
+rocommunity public localhost
+rwcommunity private localhost
+
+# Desabilitar restrições de MIBs
+view systemview included .1
+
+# Configuração do agentAddress
+agentAddress udp:161
+EOF
+
+# Reiniciar snmpd
+sudo systemctl restart snmpd
+sudo systemctl enable snmpd
+
+# Testar acesso
+snmpget -v2c -c public localhost sysDescr.0
+```
+
+### Resolução de Problemas Comuns
+
+#### Problema: `sensors: command not found`
+
+```bash
+# Instalar lm-sensors
+sudo apt-get install lm-sensors  # Ubuntu/Debian
+sudo yum install lm_sensors      # CentOS/RHEL
+
+# Configurar
+sudo sensors-detect
+```
+
+#### Problema: `snmptrap: command not found`
+
+```bash
+# Instalar pacote completo Net-SNMP
+sudo apt-get install snmp snmpd  # Ubuntu/Debian
+sudo yum install net-snmp-utils  # CentOS/RHEL
+```
+
+#### Problema: Porta 162 ocupada
+
+```bash
+# Verificar processo usando a porta
+sudo ss -tulpn | grep :162
+
+# Parar snmptrapd do systemd
+sudo systemctl stop snmptrapd
+sudo systemctl disable snmptrapd
+
+# Usar porta alternativa 1162 (recomendado)
+```
+
 ## Arquitetura do Sistema
 
 ```mermaid
@@ -26,8 +178,8 @@ graph TB
     end
     
     subgraph "Protocolo SNMP"
-        TRAP1["myHighTemperatureTrap<br/>.1.3.6.1.4.1.99999.0.1"]
-        TRAP2["myDiskFullTrap<br/>.1.3.6.1.4.1.99999.0.2"]
+        TRAP1["myHighTemperatureTrap<br/>.1.3.6.1.4.1.99999.3.0.1"]
+        TRAP2["myDiskFullTrap<br/>.1.3.6.1.4.1.99999.3.0.2"]
         MIB[CUSTOM-TRAPS-MIB]
     end
     
@@ -91,7 +243,7 @@ sequenceDiagram
     Note over Monitor: Temperatura maior que 70 graus<br/>Severidade: Emergency nivel 3
     
     Monitor->>SNMP: Preparar trap
-    Note over SNMP: Trap OID: .1.3.6.1.4.1.99999.0.1<br/>Varbinds:<br/>- currentTemperature igual 92<br/>- threshold igual 70<br/>- timestamp igual 2026-01-19<br/>- severity igual 3
+    Note over SNMP: Trap OID: .1.3.6.1.4.1.99999.3.0.1<br/>Varbinds:<br/>- currentTemperature igual 92<br/>- threshold igual 70<br/>- timestamp igual 2026-01-19<br/>- severity igual 3
     
     SNMP->>Receiver: Enviar SNMPv2c TRAP UDP porta 1162
     
@@ -123,7 +275,7 @@ Tarefa03_Traps/
 ## Traps Implementados
 
 ### 1. myHighTemperatureTrap
-**OID:** `.1.3.6.1.4.1.99999.0.1`
+**OID:** `.1.3.6.1.4.1.99999.3.0.1`
 
 Enviado quando a temperatura ultrapassa o limite configurado.
 
@@ -134,7 +286,7 @@ Enviado quando a temperatura ultrapassa o limite configurado.
 - `alertSeverity` (.3.1.8.0): Severidade (1=warning, 2=critical, 3=emergency)
 
 ### 2. myDiskFullTrap
-**OID:** `.1.3.6.1.4.1.99999.0.2`
+**OID:** `.1.3.6.1.4.1.99999.3.0.2`
 
 Enviado quando uma partição atinge capacidade crítica.
 
@@ -188,7 +340,7 @@ cd ~/Downloads/ireasoning/mibbrowser
 #### Trap de Temperatura (92°C, Emergency)
 
 ```bash
-snmptrap -v 2c -c public localhost:1162 '' .1.3.6.1.4.1.99999.0.1 \
+snmptrap -v 2c -c public localhost:1162 '' .1.3.6.1.4.1.99999.3.0.1 \
     .1.3.6.1.4.1.99999.3.1.1.0 i 92 \
     .1.3.6.1.4.1.99999.3.1.2.0 i 70 \
     .1.3.6.1.4.1.99999.3.1.7.0 s "2026-01-19 15:15:00" \
@@ -198,7 +350,7 @@ snmptrap -v 2c -c public localhost:1162 '' .1.3.6.1.4.1.99999.0.1 \
 #### Trap de Disco (97%, Emergency)
 
 ```bash
-snmptrap -v 2c -c public localhost:1162 '' .1.3.6.1.4.1.99999.0.2 \
+snmptrap -v 2c -c public localhost:1162 '' .1.3.6.1.4.1.99999.3.0.2 \
     .1.3.6.1.4.1.99999.3.1.3.0 s "/dev/sda1" \
     .1.3.6.1.4.1.99999.3.1.4.0 i 97 \
     .1.3.6.1.4.1.99999.3.1.5.0 i 500000 \
@@ -252,7 +404,7 @@ snmptrap -v 2c -c public localhost:1162 '' .1.3.6.1.4.1.99999.0.2 \
 ### Trap de Temperatura no iReasoning
 
 ```
-Trap OID: .1.3.6.1.4.1.99999.0.1 (myHighTemperatureTrap)
+Trap OID: .1.3.6.1.4.1.99999.3.0.1 (myHighTemperatureTrap)
 Source: 127.0.0.1
 Community: public
 
@@ -266,7 +418,7 @@ Varbinds:
 ### Trap de Disco no iReasoning
 
 ```
-Trap OID: .1.3.6.1.4.1.99999.0.2 (myDiskFullTrap)
+Trap OID: .1.3.6.1.4.1.99999.3.0.2 (myDiskFullTrap)
 Source: 127.0.0.1
 Community: public
 
@@ -356,8 +508,8 @@ ACTION: Emergency level - Immediate action required!
 **Base:** `.1.3.6.1.4.1.99999.3` (enterprises.99999.3)
 
 **Traps:**
-- `.1.3.6.1.4.1.99999.0.1` - myHighTemperatureTrap
-- `.1.3.6.1.4.1.99999.0.2` - myDiskFullTrap
+- `.1.3.6.1.4.1.99999.3.0.1` - myHighTemperatureTrap
+- `.1.3.6.1.4.1.99999.3.0.2` - myDiskFullTrap
 
 **Objetos:** `.1.3.6.1.4.1.99999.3.1.X.0`
 - .1.0 = currentTemperature
@@ -395,7 +547,7 @@ ls -l ~/Downloads/ireasoning/mibbrowser/mibs/CUSTOM-TRAPS-MIB.txt
 3. **Testar conectividade:**
    ```bash
    # Enviar trap simples
-   snmptrap -v 2c -c public localhost:1162 '' .1.3.6.1.4.1.99999.0.1
+   snmptrap -v 2c -c public localhost:1162 '' .1.3.6.1.4.1.99999.3.0.1
    ```
 
 ### Scripts não detectam temperatura
